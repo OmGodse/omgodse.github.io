@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>UI Chronicles - Reducing the number of dialogs in Notally</title>
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: auto;
+            max-width: 850px;
+            padding-left: 16px;
+            padding-right: 16px;
+            box-sizing: border-box;
+            font-family: "Source Sans Pro";
+        }
+
+        h1 {
+            font-size: 30px;
+            letter-spacing: 0.15px;
+        }
+
+        p,
+        th {
+            font-size: 16px;
+            letter-spacing: 0.2px;
+            line-height: 1.5;
+        }
+
+        pre {
+            padding: 8px;
+            background-color: #eee;
+            white-space: pre-wrap;
+        }
+
+        table.image-grid {
+            width: 100%;
+            table-layout: fixed;
+            border-spacing: 0;
+        }
+
+        table.image-grid img {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>UI Chronicles - Reducing the number of dialogs in Notally</h1>
+    <p>Sunday, 19th March 2023 on <a href="/">Om Godse's blog</a></p>
+    <p>
+        <a href="https://github.com/OmGodse/Notally">Notally</a> has a feature that allows you to export your notes to a
+        single file and then import them back. This is useful if you're changing devices or to create regular backups.
+    </p>
+    <p>
+        I switched the backup format from XML to ZIP in v4.9. This was to support adding images inside notes, which I'm
+        currently working on. Instead of a backup comprising of multiple files (Images and XML), all of which the user
+        must keep track of, it can be housed in a single ZIP container.
+    </p>
+    <p>
+        It would be very bad if someone were to update Notally and find out they couldn't import their old backups, so
+        the option to import the legacy XML format is still there.
+    </p>
+    <p>Notally uses the <a href="https://developer.android.com/training/data-storage/shared/documents-files">Software
+            Access Framework</a> to work with the file system. It doesn't require any permissions and is similar to the
+        Save as dialog in Windows. When there was only 1 backup format, it was easy to implement the interface. Users
+        would click on <mark>Import backup</mark> which would launch a file picker.
+    </p>
+    <table class="image-grid">
+        <tr>
+            <td>
+                <img src="Images/Import-Backup.png" />
+            </td>
+            <td>
+                <img src="Images/File-Picker-XML.png" />
+            </td>
+        </tr>
+    </table>
+    <pre>
+val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+intent.type = "text/xml"
+intent.addCategory(Intent.CATEGORY_OPENABLE)
+startActivityForResult(intent, requestCode)</pre>
+    <p>
+        As you can see, we've passed text/xml to the picker which makes only XML files selectable.
+        The question now is how to design an interface to support 2 formats. The first idea I had was to add another
+        dialog, after <mark>Import backup</mark>.
+    </p>
+    <table class="image-grid">
+        <tr>
+            <td>
+                <img src="Images/Import-Backup-Dialog.png" />
+            </td>
+        </tr>
+    </table>
+    <p>
+        If the user clicks on XML, launch the picker with text/xml, application/zip for ZIP.
+    </p>
+    <p>
+        This does seem like a logical step but it's bad design for 2 reasons. The first is that it adds another
+        choice for the user to make. Someone who has switched phones and wants his old notes
+        back isn't interested in that. The second is that people may not even know what file extensions are. Photos are
+        something they see in their gallery, not files with jpg extensions. Documents are things they create with Word
+        or Docs, not files with docx extensions. How do they know a file is a Word document? Because file managers
+        display a Word icon next to it. All they know is they had a file called Notally Backup and they want it back.
+    </p>
+    <p>
+        I couldn't think of a better way at the time so I released it. However, it remained at the back of my mind. Some
+        time later, I was going through the documentation for <a
+            href="https://developer.android.com/reference/android/content/Intent#ACTION_OPEN_DOCUMENT">ACTION_OPEN_DOCUMENT</a>
+        and found out we can specify multiple mime types for the picker.
+    </p>
+    <pre>
+val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+intent.type = "*/*"
+intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "text/xml"))
+intent.addCategory(Intent.CATEGORY_OPENABLE)
+startActivityForResult(intent, REQUEST_IMPORT_BACKUP)</pre>
+    <table class="image-grid">
+        <tr>
+            <td>
+                <img src="Images/Import-Backup.png" />
+            </td>
+            <td>
+                <img src="Images/File-Picker-XML-ZIP.png" />
+            </td>
+        </tr>
+    </table>
+    <p>
+        Voila! Both XML and ZIP files are selectable and 1 extra dialog has been removed. On a similar note, I've also
+        changed how new notes and lists are created. Previously, you would click on the blue FAB and a dialog would show
+        up. Now, both options are available right on the home screen.
+    </p>
+    <table class="image-grid">
+        <tr>
+            <th colspan="2">Before</th>
+            <th>After</th>
+        </tr>
+        <tr>
+            <td>
+                <img src="Images/FAB.png" />
+            </td>
+            <td>
+                <img src="Images/FAB-Dialog.png" />
+            </td>
+            <td>
+                <img src="Images/New-Home-Page.png" />
+            </td>
+        </tr>
+    </table>
+    <p>
+        These updates have been released in v5.2. Get it from
+        <a href="https://play.google.com/store/apps/details?id=com.omgodse.notally">Play Store</a>,
+        <a href="https://f-droid.org/packages/com.omgodse.notally/">F Droid</a>, or
+        <a href="https://github.com/OmGodse/Notally/releases/tag/v5.2">GitHub releases</a>.
+    </p>
+</body>
+
+</html>
